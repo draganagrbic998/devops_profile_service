@@ -135,6 +135,39 @@ def read_connections(request: Request, search: str = Query(''), offset: int = Qu
 def read_connection_requests(request: Request, search: str = Query(''), offset: int = Query(0), limit: int = Query(7)):
     return search_profiles(request, search, offset, limit, '/connection_requests')
 
+@app.get(PROFILE_URL)
+def read_profile(request: Request):
+    return get_current_user(request)
+
+@app.put(PROFILE_URL)
+def update_profile(request: Request, profile: Profile):
+    current_user = get_current_user(request)
+
+    with db.connect() as connection:
+        connection.execute(' '.join(f'''
+            update profiles 
+            set first_name=%s, 
+            last_name=%s, 
+            email=%s, 
+            phone_number=%s, 
+            sex=%s, 
+            birth_date=%s, 
+            username=%s, 
+            biography=%s, 
+            private=%s, 
+            work_experiences=%s, 
+            educations=%s, 
+            skills=%s, 
+            interests=%s,
+            block_post_notifications=%s,
+            block_message_notifications=%s
+            where id={current_user.id}
+        '''.split()), (profile.first_name, profile.last_name, profile.email, profile.phone_number, 
+              profile.sex, profile.birth_date, profile.username, profile.biography, profile.private,
+              str(profile.work_experiences or []).replace("'", '"'), str(profile.educations or []).replace("'", '"'), 
+              str(profile.skills or []).replace("'", '"'), str(profile.interests or []).replace("'", '"'),
+              profile.block_post_notifications or False, profile.block_message_notifications or False))
+
 
 def register_profiles_consumer():
     def poll():
