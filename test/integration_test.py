@@ -1307,3 +1307,347 @@ def test_update_profile_valid():
     assert user['blocked_profiles'] == [9, 10]
     assert not user['block_post_notifications']
     assert not user['block_message_notifications']
+
+def test_connect_blocked():
+    reset_table(10)
+    reset_user()
+    res = requests.put(f'{PROFILE_URL}/connect/9', headers=generate_auth())
+    assert res.status_code == 400
+    body = json.loads(res.text)
+    assert body['detail'] == 'Cannot connect to blocked profile'
+
+def test_connect_public():
+    reset_table(12)
+    reset_user()
+    res = requests.put(f'{PROFILE_URL}/connect/12', headers=generate_auth())
+    assert res.status_code == 200
+    user = list(db.execute('select * from profiles where id=0'))[0]
+    assert user['connections'] == [1, 3, 5, 7, 8, 12]
+    assert user['connection_requests'] == [2, 4, 6]
+    assert user['blocked_profiles'] == [9, 10]
+    connection_user = list(db.execute('select * from profiles where id=12'))[0]
+    assert connection_user['connections'] == [0]
+    assert connection_user['connection_requests'] == []
+    assert connection_user['blocked_profiles'] == []
+
+def test_connect_private():
+    reset_table(11)
+    reset_user()
+    res = requests.put(f'{PROFILE_URL}/connect/11', headers=generate_auth())
+    assert res.status_code == 200
+    user = list(db.execute('select * from profiles where id=0'))[0]
+    assert user['connections'] == [1, 3, 5, 7, 8]
+    assert user['connection_requests'] == [2, 4, 6]
+    assert user['blocked_profiles'] == [9, 10]
+    connection_user = list(db.execute('select * from profiles where id=11'))[0]
+    assert connection_user['connections'] == []
+    assert connection_user['connection_requests'] == [0]
+    assert connection_user['blocked_profiles'] == []
+
+def test_accept_connection():
+    reset_table(10)
+    reset_user()
+    res = requests.put(f'{PROFILE_URL}/accept/1', headers=generate_auth())
+    assert res.status_code == 200
+    user = list(db.execute('select * from profiles where id=0'))[0]
+    assert user['connections'] == [1, 3, 5, 7, 8]
+    assert user['connection_requests'] == [2, 4, 6]
+    assert user['blocked_profiles'] == [9, 10]
+    connection_user = list(db.execute('select * from profiles where id=1'))[0]
+    assert connection_user['connections'] == [0]
+    assert connection_user['connection_requests'] == []
+    assert connection_user['blocked_profiles'] == []
+
+def test_accept_connection_request():
+    reset_table(10)
+    reset_user()
+    res = requests.put(f'{PROFILE_URL}/accept/2', headers=generate_auth())
+    assert res.status_code == 200
+    user = list(db.execute('select * from profiles where id=0'))[0]
+    assert user['connections'] == [1, 2, 3, 5, 7, 8]
+    assert user['connection_requests'] == [4, 6]
+    assert user['blocked_profiles'] == [9, 10]
+    connection_user = list(db.execute('select * from profiles where id=2'))[0]
+    assert connection_user['connections'] == [0]
+    assert connection_user['connection_requests'] == []
+    assert connection_user['blocked_profiles'] == []
+
+def test_accept_blocked_profile():
+    reset_table(10)
+    reset_user()
+    res = requests.put(f'{PROFILE_URL}/accept/9', headers=generate_auth())
+    assert res.status_code == 200
+    user = list(db.execute('select * from profiles where id=0'))[0]
+    assert user['connections'] == [1, 3, 5, 7, 8, 9]
+    assert user['connection_requests'] == [2, 4, 6]
+    assert user['blocked_profiles'] == [10]
+    connection_user = list(db.execute('select * from profiles where id=9'))[0]
+    assert connection_user['connections'] == [0]
+    assert connection_user['connection_requests'] == []
+    assert connection_user['blocked_profiles'] == []
+
+def test_accept_any():
+    reset_table(11)
+    reset_user()
+    res = requests.put(f'{PROFILE_URL}/accept/11', headers=generate_auth())
+    assert res.status_code == 200
+    user = list(db.execute('select * from profiles where id=0'))[0]
+    assert user['connections'] == [1, 3, 5, 7, 8, 11]
+    assert user['connection_requests'] == [2, 4, 6]
+    assert user['blocked_profiles'] == [9, 10]
+    connection_user = list(db.execute('select * from profiles where id=11'))[0]
+    assert connection_user['connections'] == [0]
+    assert connection_user['connection_requests'] == []
+    assert connection_user['blocked_profiles'] == []
+
+def test_reject_connection():
+    reset_table(10)
+    reset_user()
+    res = requests.put(f'{PROFILE_URL}/reject/1', headers=generate_auth())
+    assert res.status_code == 200
+    user = list(db.execute('select * from profiles where id=0'))[0]
+    assert user['connections'] == [3, 5, 7, 8]
+    assert user['connection_requests'] == [2, 4, 6]
+    assert user['blocked_profiles'] == [9, 10]
+    connection_user = list(db.execute('select * from profiles where id=1'))[0]
+    assert connection_user['connections'] == []
+    assert connection_user['connection_requests'] == []
+    assert connection_user['blocked_profiles'] == []
+
+def test_reject_connection_request():
+    reset_table(10)
+    reset_user()
+    res = requests.put(f'{PROFILE_URL}/reject/2', headers=generate_auth())
+    assert res.status_code == 200
+    user = list(db.execute('select * from profiles where id=0'))[0]
+    assert user['connections'] == [1, 3, 5, 7, 8]
+    assert user['connection_requests'] == [4, 6]
+    assert user['blocked_profiles'] == [9, 10]
+    connection_user = list(db.execute('select * from profiles where id=2'))[0]
+    assert connection_user['connections'] == []
+    assert connection_user['connection_requests'] == []
+    assert connection_user['blocked_profiles'] == []
+
+def test_reject_blocked_profile():
+    reset_table(10)
+    reset_user()
+    res = requests.put(f'{PROFILE_URL}/reject/9', headers=generate_auth())
+    assert res.status_code == 200
+    user = list(db.execute('select * from profiles where id=0'))[0]
+    assert user['connections'] == [1, 3, 5, 7, 8]
+    assert user['connection_requests'] == [2, 4, 6]
+    assert user['blocked_profiles'] == [10]
+    connection_user = list(db.execute('select * from profiles where id=9'))[0]
+    assert connection_user['connections'] == []
+    assert connection_user['connection_requests'] == []
+    assert connection_user['blocked_profiles'] == []
+
+def test_reject_any():
+    reset_table(11)
+    reset_user()
+    res = requests.put(f'{PROFILE_URL}/reject/11', headers=generate_auth())
+    assert res.status_code == 200
+    user = list(db.execute('select * from profiles where id=0'))[0]
+    assert user['connections'] == [1, 3, 5, 7, 8]
+    assert user['connection_requests'] == [2, 4, 6]
+    assert user['blocked_profiles'] == [9, 10]
+    connection_user = list(db.execute('select * from profiles where id=11'))[0]
+    assert connection_user['connections'] == []
+    assert connection_user['connection_requests'] == []
+    assert connection_user['blocked_profiles'] == []
+
+def test_block_connection():
+    reset_table(10)
+    reset_user()
+    res = requests.put(f'{PROFILE_URL}/block/1', headers=generate_auth())
+    assert res.status_code == 200
+    user = list(db.execute('select * from profiles where id=0'))[0]
+    assert user['connections'] == [3, 5, 7, 8]
+    assert user['connection_requests'] == [2, 4, 6]
+    assert user['blocked_profiles'] == [1, 9, 10]
+    connection_user = list(db.execute('select * from profiles where id=1'))[0]
+    assert connection_user['connections'] == []
+    assert connection_user['connection_requests'] == []
+    assert connection_user['blocked_profiles'] == [0]
+
+def test_block_connection_request():
+    reset_table(10)
+    reset_user()
+    res = requests.put(f'{PROFILE_URL}/block/2', headers=generate_auth())
+    assert res.status_code == 200
+    user = list(db.execute('select * from profiles where id=0'))[0]
+    assert user['connections'] == [1, 3, 5, 7, 8]
+    assert user['connection_requests'] == [4, 6]
+    assert user['blocked_profiles'] == [2, 9, 10]
+    connection_user = list(db.execute('select * from profiles where id=2'))[0]
+    assert connection_user['connections'] == []
+    assert connection_user['connection_requests'] == []
+    assert connection_user['blocked_profiles'] == [0]
+
+def test_block_blocked_profile():
+    reset_table(10)
+    reset_user()
+    res = requests.put(f'{PROFILE_URL}/block/9', headers=generate_auth())
+    assert res.status_code == 200
+    user = list(db.execute('select * from profiles where id=0'))[0]
+    assert user['connections'] == [1, 3, 5, 7, 8]
+    assert user['connection_requests'] == [2, 4, 6]
+    assert user['blocked_profiles'] == [9, 10]
+    connection_user = list(db.execute('select * from profiles where id=9'))[0]
+    assert connection_user['connections'] == []
+    assert connection_user['connection_requests'] == []
+    assert connection_user['blocked_profiles'] == [0]
+
+def test_block_any():
+    reset_table(11)
+    reset_user()
+    res = requests.put(f'{PROFILE_URL}/block/11', headers=generate_auth())
+    assert res.status_code == 200
+    user = list(db.execute('select * from profiles where id=0'))[0]
+    assert user['connections'] == [1, 3, 5, 7, 8]
+    assert user['connection_requests'] == [2, 4, 6]
+    assert user['blocked_profiles'] == [9, 10, 11]
+    connection_user = list(db.execute('select * from profiles where id=11'))[0]
+    assert connection_user['connections'] == []
+    assert connection_user['connection_requests'] == []
+    assert connection_user['blocked_profiles'] == [0]
+
+def test_read_notifications():
+    reset_notifications_table(3)
+    reset_table(0)
+    reset_user()
+    res = requests.get(NOTIFICATIONS_URL, headers=generate_auth())
+    assert res.status_code == 200
+    body = json.loads(res.text)
+    assert body['links']['prev'] is None
+    assert body['links']['next'] is None
+    assert body['offset'] == 0
+    assert body['limit'] == 7
+    assert body['size'] == 1
+
+    assert len(body['results']) == 1
+    assert body['results'][0]['recipient_id'] == 0
+    assert body['results'][0]['message'] == 'message 1'
+        
+def test_read_notifications_with_offset():
+    reset_notifications_table(3)
+    reset_table(0)
+    reset_user()
+    res = requests.get(f'{NOTIFICATIONS_URL}?offset=7', headers=generate_auth())
+    assert res.status_code == 200
+    body = json.loads(res.text)
+    assert body['links']['prev'] == '/notifications?search=&offset=0&limit=7'
+    assert body['links']['next'] is None
+    assert body['offset'] == 7
+    assert body['limit'] == 7
+    assert body['size'] == 0
+
+    assert len(body['results']) == 0
+
+def test_read_notifications_with_limit():
+    reset_notifications_table(3)
+    reset_table(0)
+    reset_user()
+    res = requests.get(f'{NOTIFICATIONS_URL}?limit=10', headers=generate_auth())
+    assert res.status_code == 200
+    body = json.loads(res.text)
+    assert body['links']['prev'] is None
+    assert body['links']['next'] is None
+    assert body['offset'] == 0
+    assert body['limit'] == 10
+    assert body['size'] == 1
+
+    assert len(body['results']) == 1
+    assert body['results'][0]['recipient_id'] == 0
+    assert body['results'][0]['message'] == 'message 1'
+
+def test_search_notifications_my_message():
+    reset_notifications_table(3)
+    reset_table(0)
+    reset_user()
+    res = requests.get(f'{NOTIFICATIONS_URL}?search=MESSAGE', headers=generate_auth())
+    assert res.status_code == 200
+    body = json.loads(res.text)
+    assert body['links']['prev'] is None
+    assert body['links']['next'] is None
+    assert body['offset'] == 0
+    assert body['limit'] == 7
+    assert body['size'] == 1
+
+    assert len(body['results']) == 1
+    assert body['results'][0]['recipient_id'] == 0
+    assert body['results'][0]['message'] == 'message 1'
+
+def test_consuming_profile():
+    reset_table(0)
+    kafka_producer.send('profiles', {
+        'id': 1,
+        'first_name': 'first_name 1',
+        'last_name': 'last_name 1',
+        'email': 'email 1',
+        'phone_number': 'phone_number 1',
+        'sex': 'sex 1',
+        'birth_date': datetime.date.today().isoformat(),
+        'username': 'username 1',
+        'biography': 'biography 1',
+        'private': True
+    })
+    time.sleep(1)
+    with db.connect() as connection:
+        profiles = list(connection.execute('select * from profiles'))
+
+    assert len(profiles) == 1
+    assert profiles[0].id == 1
+    assert profiles[0].first_name == 'first_name 1'
+    assert profiles[0].last_name == 'last_name 1'
+    assert profiles[0].email == 'email 1'
+    assert profiles[0].phone_number == 'phone_number 1'
+    assert profiles[0].sex == 'sex 1'
+    assert profiles[0].username == 'username 1'
+    assert profiles[0].biography == 'biography 1'
+    assert profiles[0].private
+    
+    assert profiles[0].work_experiences == []
+    assert profiles[0].educations == []
+    assert profiles[0].skills == []
+    assert profiles[0].interests == []
+    assert profiles[0].connections == []
+    assert profiles[0].connection_requests == []
+    assert profiles[0].blocked_profiles == []
+    assert not profiles[0].block_post_notifications
+    assert not profiles[0].block_message_notifications
+
+def test_consuming_post_notification():
+    reset_table(3)
+    with db.connect() as connection:
+        connection.execute("update profiles set connections='[2, 3]' where id=1")
+        connection.execute('delete from notifications')
+        kafka_producer.send('notifications', {
+            'type': 'post',
+            'user_id': 1,
+            'message': 'User dummy@gmail.com has added a new post.'
+        })
+        time.sleep(1)
+        notifications = list(connection.execute('select * from notifications'))
+
+    assert len(notifications) == 2
+    assert notifications[0].recipient_id == 2
+    assert notifications[0].message == 'User dummy@gmail.com has added a new post.'
+    assert notifications[1].recipient_id == 3
+    assert notifications[1].message == 'User dummy@gmail.com has added a new post.'
+
+def test_consuming_message_notification():
+    reset_table(1)
+    with db.connect() as connection:
+        connection.execute('delete from notifications')
+        kafka_producer.send('notifications', {
+            'type': 'message',
+            'user_id': 1,
+            'message': 'User dummy@gmail.com has sent you a message.'
+        })
+        time.sleep(1)
+        notifications = list(connection.execute('select * from notifications'))
+
+    assert len(notifications) == 1
+    assert notifications[0].recipient_id == 1
+    assert notifications[0].message == 'User dummy@gmail.com has sent you a message.'

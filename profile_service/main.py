@@ -168,6 +168,132 @@ def update_profile(request: Request, profile: Profile):
               str(profile.skills or []).replace("'", '"'), str(profile.interests or []).replace("'", '"'),
               profile.block_post_notifications or False, profile.block_message_notifications or False))
 
+@app.put(PROFILE_URL + '/connect/{profile_id}')
+def connect(request: Request, profile_id: int):
+    current_user = get_current_user(request)
+    connection_user = get_user(profile_id)
+    if profile_id in dict(current_user)['blocked_profiles']:
+        raise HTTPException(status_code=400, detail='Cannot connect to blocked profile')
+
+    with db.connect() as connection:
+
+        if connection_user.private:
+            connection.execute(f'''
+                update profiles 
+                set connections='{list(filter(lambda x: x != profile_id, current_user.connections))}',
+                connection_requests='{list(filter(lambda x: x != profile_id, current_user.connection_requests))}',
+                blocked_profiles='{list(filter(lambda x: x != profile_id, current_user.blocked_profiles))}'
+                where id={current_user.id}
+            ''')
+            connection.execute(f'''
+                update profiles 
+                set connections='{list(filter(lambda x: x != current_user.id, connection_user.connections))}',
+                connection_requests='{sorted(list(set(connection_user.connection_requests + [current_user.id])))}',
+                blocked_profiles='{list(filter(lambda x: x != current_user.id, connection_user.blocked_profiles))}'
+                where id={connection_user.id}
+            ''')
+        else:
+            connection.execute(f'''
+                update profiles 
+                set connections='{sorted(list(set(current_user.connections + [profile_id])))}',
+                connection_requests='{list(filter(lambda x: x != profile_id, current_user.connection_requests))}',
+                blocked_profiles='{list(filter(lambda x: x != profile_id, current_user.blocked_profiles))}'
+                where id={current_user.id}
+            ''')
+            connection.execute(f'''
+                update profiles 
+                set connections='{sorted(list(set(connection_user.connections + [current_user.id])))}',
+                connection_requests='{list(filter(lambda x: x != current_user.id, connection_user.connection_requests))}',
+                blocked_profiles='{list(filter(lambda x: x != current_user.id, connection_user.blocked_profiles))}'
+                where id={connection_user.id}
+            ''')
+
+
+
+@app.put(PROFILE_URL + '/accept/{profile_id}')
+def accept(request: Request, profile_id: int):
+    current_user = get_current_user(request)
+    connection_user = get_user(profile_id)
+
+    with db.connect() as connection:
+
+        connection.execute(f'''
+            update profiles 
+            set connections='{sorted(list(set(current_user.connections + [profile_id])))}',
+            connection_requests='{list(filter(lambda x: x != profile_id, current_user.connection_requests))}',
+            blocked_profiles='{list(filter(lambda x: x != profile_id, current_user.blocked_profiles))}'
+            where id={current_user.id}
+        ''')
+        connection.execute(f'''
+            update profiles 
+            set connections='{sorted(list(set(connection_user.connections + [current_user.id])))}',
+            connection_requests='{list(filter(lambda x: x != current_user.id, connection_user.connection_requests))}',
+            blocked_profiles='{list(filter(lambda x: x != current_user.id, connection_user.blocked_profiles))}'
+            where id={connection_user.id}
+        ''')
+
+
+
+@app.put(PROFILE_URL + '/reject/{profile_id}')
+def reject(request: Request, profile_id: int):
+    current_user = get_current_user(request)
+    connection_user = get_user(profile_id)
+
+    with db.connect() as connection:
+
+        connection.execute(f'''
+            update profiles 
+            set connections='{list(filter(lambda x: x != profile_id, current_user.connections))}',
+            connection_requests='{list(filter(lambda x: x != profile_id, current_user.connection_requests))}',
+            blocked_profiles='{list(filter(lambda x: x != profile_id, current_user.blocked_profiles))}'
+            where id={current_user.id}
+        ''')
+        connection.execute(f'''
+            update profiles 
+            set connections='{list(filter(lambda x: x != current_user.id, connection_user.connections))}',
+            connection_requests='{list(filter(lambda x: x != current_user.id, connection_user.connection_requests))}',
+            blocked_profiles='{list(filter(lambda x: x != current_user.id, connection_user.blocked_profiles))}'
+            where id={connection_user.id}
+        ''')
+
+
+
+@app.put(PROFILE_URL + '/block/{profile_id}')
+def block(request: Request, profile_id: int):
+    current_user = get_current_user(request)
+    connection_user = get_user(profile_id)
+
+    with db.connect() as connection:
+
+        connection.execute(f'''
+            update profiles 
+            set connections='{list(filter(lambda x: x != profile_id, current_user.connections))}',
+            connection_requests='{list(filter(lambda x: x != profile_id, current_user.connection_requests))}',
+            blocked_profiles='{sorted(list(set(current_user.blocked_profiles + [profile_id])))}'
+            where id={current_user.id}
+        ''')
+        connection.execute(f'''
+            update profiles 
+            set connections='{list(filter(lambda x: x != current_user.id, connection_user.connections))}',
+            connection_requests='{list(filter(lambda x: x != current_user.id, connection_user.connection_requests))}',
+            blocked_profiles='{sorted(list(set(connection_user.blocked_profiles + [current_user.id])))}'
+            where id={connection_user.id}
+        ''')
+
+@app.get(NOTIFICATIONS_URL)
+def read_notifications(request: Request, search: str = Query(''), offset: int = Query(0), limit: int = Query(7)):
+    current_user_id = get_current_user(request).id
+    
+    with db.connect() as connection:
+        total_notifications = len(list(connection.execute(f'select * from notifications where recipient_id={current_user_id} and lower(message) like %s', (f'%{search.lower()}%',))))
+        notifications = list(connection.execute(f'select * from notifications where recipient_id={current_user_id} and lower(message) like %s order by id desc offset {offset} limit {limit}', (f'%{search.lower()}%',)))
+    
+    prev_link = f'/notifications?search={search}&offset={offset - limit}&limit={limit}' if offset - limit >= 0 else None
+    next_link = f'/notifications?search={search}&offset={offset + limit}&limit={limit}' if offset + limit < total_notifications else None
+    links = NavigationLinks(prev=prev_link, next=next_link)
+    results = [Notification.parse_obj(dict(notification)) for notification in notifications]
+    return NotificationResponse(results=results, links=links, offset=offset, limit=limit, size=len(results))
+
 
 def register_profiles_consumer():
     def poll():
