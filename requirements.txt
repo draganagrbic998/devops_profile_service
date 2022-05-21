@@ -1,0 +1,8 @@
+fastapi
+sqlalchemy 
+uvicorn
+pydantic 
+typing 
+kafka-python
+psycopg2-binary
+PyJWT
