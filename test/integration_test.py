@@ -4,16 +4,16 @@ from kafka import KafkaProducer
 
 import pytest
 import requests
-import json
-import time
-import jwt
 import datetime
+import time
+import json
+import jwt
 
+db = create_engine('postgresql://postgres:postgres@localhost:5434/postgres')
+kafka_producer = None
 PROFILES_URL = 'http://localhost:8001/api/profiles'
 PROFILE_URL = 'http://localhost:8001/api/profile'
 NOTIFICATIONS_URL = 'http://localhost:8001/api/notifications'
-db = create_engine('postgresql://postgres:postgres@localhost:5434/postgres')
-kafka_producer = None
 
 @pytest.fixture(scope='session', autouse=True)
 def do_something(request):
@@ -23,27 +23,24 @@ def do_something(request):
     
 
 def reset_table(number_of_rows=0):
-    with db.connect() as connection:
-        connection.execute('delete from profiles')
-        for i in range(number_of_rows):
-            connection.execute(f'''
-                insert into profiles (id, first_name, last_name, email, phone_number, sex, birth_date, username, biography, private)
-                values ({i+1}, 'first_name {i+1}', 'last_name {i+1}', 'email {i+1}', 'phone_number {i+1}', 
-                'sex {i+1}', current_date, 'username {i+1}', 'biography {i+1}', {'true' if i%2==0 else 'false'})
-            ''')
+    db.execute('delete from profiles')
+    for i in range(number_of_rows):
+        db.execute(f'''
+            insert into profiles (id, first_name, last_name, email, phone_number, sex, birth_date, username, biography, private)
+            values ({i+1}, 'first_name {i+1}', 'last_name {i+1}', 'email {i+1}', 'phone_number {i+1}', 
+            'sex {i+1}', current_date, 'username {i+1}', 'biography {i+1}', {'true' if i%2==0 else 'false'})
+        ''')
 
 def reset_notifications_table(number_of_rows=0):
-    with db.connect() as connection:
-        connection.execute('delete from notifications')
-        for i in range(number_of_rows):
-            connection.execute(f"insert into notifications (recipient_id, message) values ({i}, 'message {i+1}')")
+    db.execute('delete from notifications')
+    for i in range(number_of_rows):
+        db.execute(f"insert into notifications (recipient_id, message) values ({i}, 'message {i+1}')")
 
 def reset_user():
-    with db.connect() as connection:
-        connection.execute(f'''
-            insert into profiles (id, first_name, last_name, email, phone_number, sex, birth_date, username, biography, private, connections, connection_requests, blocked_profiles)
-            values (0, 'asd', 'asd', 'asd', 'asd', 'asd', current_date, 'asd', 'asd', true, '[1, 3, 5, 7, 8]', '[2, 4, 6]', '[9, 10]')
-        ''')
+    db.execute(f'''
+        insert into profiles (id, first_name, last_name, email, phone_number, sex, birth_date, username, biography, private, connections, connection_requests, blocked_profiles)
+        values (0, 'asd', 'asd', 'asd', 'asd', 'asd', current_date, 'asd', 'asd', true, '[1, 3, 5, 7, 8]', '[2, 4, 6]', '[9, 10]')
+    ''')
 
 def generate_auth():
     return {'Authorization': jwt.encode({'id': 0}, JWT_SECRET, algorithm=JWT_ALGORITHM)}
@@ -72,6 +69,26 @@ def check_profiles(profiles: list, limit=7, offset_check=lambda x: x+1):
         
         assert not profiles[i]['block_post_notifications']
         assert not profiles[i]['block_message_notifications']
+
+def check_public_profiles(profiles: list):
+    assert len(profiles) == 5
+    for i in range(len(profiles)):
+        assert not profiles[i]['private']
+        assert profiles[i]['id'] == (i+1) * 2
+
+def check_connections(profiles: list):
+    assert len(profiles) == 5
+    assert profiles[0]['id'] == 1
+    assert profiles[1]['id'] == 3
+    assert profiles[2]['id'] == 5
+    assert profiles[3]['id'] == 7
+    assert profiles[4]['id'] == 8
+
+def check_connection_requests(profiles: list):
+    assert len(profiles) == 3
+    assert profiles[0]['id'] == 2
+    assert profiles[1]['id'] == 4
+    assert profiles[2]['id'] == 6
 
 def test_read_profiles():
     reset_table(10)
@@ -203,12 +220,6 @@ def test_search_profiles_by_biography():
     assert body['size'] == 7
     check_profiles(body['results'])
 
-def check_public_profiles(profiles: list):
-    assert len(profiles) == 5
-    for i in range(len(profiles)):
-        assert not profiles[i]['private']
-        assert profiles[i]['id'] == (i+1) * 2
-
 def test_read_public_profiles():
     reset_table(10)
     reset_user()
@@ -339,14 +350,6 @@ def test_search_public_profiles_by_biography():
     assert body['size'] == 5
     check_public_profiles(body['results'])
 
-def check_connections(profiles: list):
-    assert len(profiles) == 5
-    assert profiles[0]['id'] == 1
-    assert profiles[1]['id'] == 3
-    assert profiles[2]['id'] == 5
-    assert profiles[3]['id'] == 7
-    assert profiles[4]['id'] == 8
-
 def test_read_connections():
     reset_table(10)
     reset_user()
@@ -476,12 +479,6 @@ def test_search_connections_by_biography():
     assert body['limit'] == 7
     assert body['size'] == 5
     check_connections(body['results'])
-
-def check_connection_requests(profiles: list):
-    assert len(profiles) == 3
-    assert profiles[0]['id'] == 2
-    assert profiles[1]['id'] == 4
-    assert profiles[2]['id'] == 6
 
 def test_read_connection_requests():
     reset_table(10)
@@ -1287,8 +1284,7 @@ def test_update_profile_valid():
     body = json.loads(res.text)
     assert body is None
 
-    with db.connect() as connection:
-        user = list(connection.execute('select * from profiles where id=0'))[0]    
+    user = list(db.execute('select * from profiles where id=0'))[0]    
     assert user['id'] == 0
     assert user['first_name'] == 'qwe'
     assert user['last_name'] == 'qwe'
@@ -1593,8 +1589,7 @@ def test_consuming_profile():
         'private': True
     })
     time.sleep(1)
-    with db.connect() as connection:
-        profiles = list(connection.execute('select * from profiles'))
+    profiles = list(db.execute('select * from profiles'))
 
     assert len(profiles) == 1
     assert profiles[0].id == 1
@@ -1619,16 +1614,15 @@ def test_consuming_profile():
 
 def test_consuming_post_notification():
     reset_table(3)
-    with db.connect() as connection:
-        connection.execute("update profiles set connections='[2, 3]' where id=1")
-        connection.execute('delete from notifications')
-        kafka_producer.send('notifications', {
-            'type': 'post',
-            'user_id': 1,
-            'message': 'User dummy@gmail.com has added a new post.'
-        })
-        time.sleep(1)
-        notifications = list(connection.execute('select * from notifications'))
+    db.execute("update profiles set connections='[2, 3]' where id=1")
+    db.execute('delete from notifications')
+    kafka_producer.send('notifications', {
+        'type': 'post',
+        'user_id': 1,
+        'message': 'User dummy@gmail.com has added a new post.'
+    })
+    time.sleep(1)
+    notifications = list(db.execute('select * from notifications'))
 
     assert len(notifications) == 2
     assert notifications[0].recipient_id == 2
@@ -1638,15 +1632,14 @@ def test_consuming_post_notification():
 
 def test_consuming_message_notification():
     reset_table(1)
-    with db.connect() as connection:
-        connection.execute('delete from notifications')
-        kafka_producer.send('notifications', {
-            'type': 'message',
-            'user_id': 1,
-            'message': 'User dummy@gmail.com has sent you a message.'
-        })
-        time.sleep(1)
-        notifications = list(connection.execute('select * from notifications'))
+    db.execute('delete from notifications')
+    kafka_producer.send('notifications', {
+        'type': 'message',
+        'user_id': 1,
+        'message': 'User dummy@gmail.com has sent you a message.'
+    })
+    time.sleep(1)
+    notifications = list(db.execute('select * from notifications'))
 
     assert len(notifications) == 1
     assert notifications[0].recipient_id == 1

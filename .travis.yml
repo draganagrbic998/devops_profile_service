@@ -5,6 +5,15 @@ services:
 
 jobs:
   include:
+    - stage: conventional_commit_check
+      language: node_js
+      node_js: 16
+      install: skip
+      before_script:
+        - npm install -g @commitlint/cli @commitlint/config-conventional
+      script:
+        - commitlint --from=HEAD~1
+      if: type = pull_request
     - stage: build
       install: skip
       script:

@@ -6,9 +6,6 @@ import json
 import jwt
 
 class TestDB:
-    
-    def connect(self):
-        return self
     def execute(self, sql, params):
         return [{
             'id': 0,
@@ -31,19 +28,18 @@ class TestDB:
             'block_post_notifications': False,
             'block_message_notifications': False
         }]
-    def __enter__(self):
-        return self
-    def __exit__(self, exc_type, exc_value, tb):
-        pass
 
 client = TestClient(app)
 testDB = TestDB()
+
+def fix_whitespaces(text: str):
+    return ' '.join(text.split())
 
 def generate_auth():
     return {'Authorization': jwt.encode({'id': 0}, JWT_SECRET, algorithm=JWT_ALGORITHM)}
 
 def filter():
-    return ' '.join('''
+    return fix_whitespaces('''
         lower(first_name) like %s or 
         lower(last_name) like %s or 
         lower(email) like %s or 
@@ -51,7 +47,7 @@ def filter():
         lower(sex) like %s or 
         lower(username) like %s or 
         lower(biography) like %s
-    '''.split())
+    ''')
 
 @patch('profile_service.main.db', testDB)
 def test_read_profiles():
@@ -59,9 +55,7 @@ def test_read_profiles():
         res = client.get(PROFILES_URL, headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and true and ({filter()}) order by id offset 0 limit 7                          
-        '''.split()), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and true and ({filter()}) order by id offset 0 limit 7'), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
         
 @patch('profile_service.main.db', testDB)
 def test_read_profiles_with_offset():
@@ -69,9 +63,7 @@ def test_read_profiles_with_offset():
         res = client.get(f'{PROFILES_URL}?offset=7', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and true and ({filter()}) order by id offset 7 limit 7                          
-        '''.split()), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and true and ({filter()}) order by id offset 7 limit 7'), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
 
 @patch('profile_service.main.db', testDB)
 def test_read_profiles_with_limit():
@@ -79,9 +71,7 @@ def test_read_profiles_with_limit():
         res = client.get(f'{PROFILES_URL}?limit=10', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and true and ({filter()}) order by id offset 0 limit 10                          
-        '''.split()), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and true and ({filter()}) order by id offset 0 limit 10'), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_profiles_by_first_name():
@@ -89,9 +79,7 @@ def test_search_profiles_by_first_name():
         res = client.get(f'{PROFILES_URL}?search=FIRST_NAME', headers=generate_auth())
         assert res.status_code == 200        
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and true and ({filter()}) order by id offset 0 limit 7                          
-        '''.split()), ('%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and true and ({filter()}) order by id offset 0 limit 7'), ('%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_profiles_by_last_name():
@@ -99,9 +87,7 @@ def test_search_profiles_by_last_name():
         res = client.get(f'{PROFILES_URL}?search=LAST_NAME', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and true and ({filter()}) order by id offset 0 limit 7                          
-        '''.split()), ('%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and true and ({filter()}) order by id offset 0 limit 7'), ('%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_profiles_by_email():
@@ -109,9 +95,7 @@ def test_search_profiles_by_email():
         res = client.get(f'{PROFILES_URL}?search=EMAIL', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and true and ({filter()}) order by id offset 0 limit 7                          
-        '''.split()), ('%email%', '%email%', '%email%', '%email%', '%email%', '%email%', '%email%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and true and ({filter()}) order by id offset 0 limit 7'), ('%email%', '%email%', '%email%', '%email%', '%email%', '%email%', '%email%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_profiles_by_phone_number():
@@ -119,9 +103,7 @@ def test_search_profiles_by_phone_number():
         res = client.get(f'{PROFILES_URL}?search=PHONE_NUMBER', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and true and ({filter()}) order by id offset 0 limit 7                          
-        '''.split()), ('%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and true and ({filter()}) order by id offset 0 limit 7'), ('%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_profiles_by_sex():
@@ -129,9 +111,7 @@ def test_search_profiles_by_sex():
         res = client.get(f'{PROFILES_URL}?search=SEX', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and true and ({filter()}) order by id offset 0 limit 7                          
-        '''.split()), ('%sex%', '%sex%', '%sex%', '%sex%', '%sex%', '%sex%', '%sex%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and true and ({filter()}) order by id offset 0 limit 7'), ('%sex%', '%sex%', '%sex%', '%sex%', '%sex%', '%sex%', '%sex%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_profiles_by_username():
@@ -139,9 +119,7 @@ def test_search_profiles_by_username():
         res = client.get(f'{PROFILES_URL}?search=USERNAME', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and true and ({filter()}) order by id offset 0 limit 7                          
-        '''.split()), ('%username%', '%username%', '%username%', '%username%', '%username%', '%username%', '%username%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and true and ({filter()}) order by id offset 0 limit 7'), ('%username%', '%username%', '%username%', '%username%', '%username%', '%username%', '%username%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_profiles_by_biography():
@@ -149,9 +127,7 @@ def test_search_profiles_by_biography():
         res = client.get(f'{PROFILES_URL}?search=BIOGRAPHY', headers=generate_auth())
         assert res.status_code == 200        
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and true and ({filter()}) order by id offset 0 limit 7                          
-        '''.split()), ('%biography%', '%biography%', '%biography%', '%biography%', '%biography%', '%biography%', '%biography%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and true and ({filter()}) order by id offset 0 limit 7'), ('%biography%', '%biography%', '%biography%', '%biography%', '%biography%', '%biography%', '%biography%'))
 
 @patch('profile_service.main.db', testDB)
 def test_read_public_profiles():
@@ -159,9 +135,7 @@ def test_read_public_profiles():
         res = client.get(f'{PROFILES_URL}/public', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and private=false and ({filter()}) order by id offset 0 limit 7                          
-        '''.split()), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and private=false and ({filter()}) order by id offset 0 limit 7'), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
 
 @patch('profile_service.main.db', testDB)
 def test_read_public_profiles_with_offset():
@@ -169,9 +143,7 @@ def test_read_public_profiles_with_offset():
         res = client.get(f'{PROFILES_URL}/public?offset=7', headers=generate_auth())
         assert res.status_code == 200        
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and private=false and ({filter()}) order by id offset 7 limit 7                          
-        '''.split()), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and private=false and ({filter()}) order by id offset 7 limit 7'), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
 
 @patch('profile_service.main.db', testDB)
 def test_read_public_profiles_with_limit():
@@ -179,9 +151,7 @@ def test_read_public_profiles_with_limit():
         res = client.get(f'{PROFILES_URL}/public?limit=10', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and private=false and ({filter()}) order by id offset 0 limit 10                          
-        '''.split()), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and private=false and ({filter()}) order by id offset 0 limit 10'), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_public_profiles_by_first_name():
@@ -189,9 +159,7 @@ def test_search_public_profiles_by_first_name():
         res = client.get(f'{PROFILES_URL}/public?search=FIRST_NAME', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and private=false and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and private=false and ({filter()}) order by id offset 0 limit 7'), ('%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_public_profiles_by_last_name():
@@ -199,9 +167,7 @@ def test_search_public_profiles_by_last_name():
         res = client.get(f'{PROFILES_URL}/public?search=LAST_NAME', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and private=false and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and private=false and ({filter()}) order by id offset 0 limit 7'), ('%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_public_profiles_by_email():
@@ -209,9 +175,7 @@ def test_search_public_profiles_by_email():
         res = client.get(f'{PROFILES_URL}/public?search=EMAIL', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and private=false and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%email%', '%email%', '%email%', '%email%', '%email%', '%email%', '%email%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and private=false and ({filter()}) order by id offset 0 limit 7'), ('%email%', '%email%', '%email%', '%email%', '%email%', '%email%', '%email%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_public_profiles_by_phone_number():
@@ -219,9 +183,7 @@ def test_search_public_profiles_by_phone_number():
         res = client.get(f'{PROFILES_URL}/public?search=PHONE_NUMBER', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and private=false and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and private=false and ({filter()}) order by id offset 0 limit 7'), ('%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_public_profiles_by_sex():
@@ -229,9 +191,7 @@ def test_search_public_profiles_by_sex():
         res = client.get(f'{PROFILES_URL}/public?search=SEX', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and private=false and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%sex%', '%sex%', '%sex%', '%sex%', '%sex%', '%sex%', '%sex%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and private=false and ({filter()}) order by id offset 0 limit 7'), ('%sex%', '%sex%', '%sex%', '%sex%', '%sex%', '%sex%', '%sex%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_public_profiles_by_username():
@@ -239,9 +199,7 @@ def test_search_public_profiles_by_username():
         res = client.get(f'{PROFILES_URL}/public?search=USERNAME', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and private=false and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%username%', '%username%', '%username%', '%username%', '%username%', '%username%', '%username%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and private=false and ({filter()}) order by id offset 0 limit 7'), ('%username%', '%username%', '%username%', '%username%', '%username%', '%username%', '%username%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_public_profiles_by_biography():
@@ -249,9 +207,7 @@ def test_search_public_profiles_by_biography():
         res = client.get(f'{PROFILES_URL}/public?search=BIOGRAPHY', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and private=false and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%biography%', '%biography%', '%biography%', '%biography%', '%biography%', '%biography%', '%biography%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and private=false and ({filter()}) order by id offset 0 limit 7'), ('%biography%', '%biography%', '%biography%', '%biography%', '%biography%', '%biography%', '%biography%'))
 
 
 @patch('profile_service.main.db', testDB)
@@ -260,9 +216,7 @@ def test_read_connections():
         res = client.get(f'{PROFILES_URL}/connections', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and id in (1, 3, 5, 7, 8) and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and id in (1, 3, 5, 7, 8) and ({filter()}) order by id offset 0 limit 7'), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
 
 @patch('profile_service.main.db', testDB)
 def test_read_connections_with_offset():
@@ -270,9 +224,7 @@ def test_read_connections_with_offset():
         res = client.get(f'{PROFILES_URL}/connections?offset=7', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and id in (1, 3, 5, 7, 8) and ({filter()}) order by id offset 7 limit 7                        
-        '''.split()), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and id in (1, 3, 5, 7, 8) and ({filter()}) order by id offset 7 limit 7'), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
 
 
 @patch('profile_service.main.db', testDB)
@@ -281,9 +233,7 @@ def test_read_connections_with_limit():
         res = client.get(f'{PROFILES_URL}/connections?limit=10', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and id in (1, 3, 5, 7, 8) and ({filter()}) order by id offset 0 limit 10                        
-        '''.split()), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and id in (1, 3, 5, 7, 8) and ({filter()}) order by id offset 0 limit 10'), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_connections_by_first_name():
@@ -291,9 +241,7 @@ def test_search_connections_by_first_name():
         res = client.get(f'{PROFILES_URL}/connections?search=FIRST_NAME', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and id in (1, 3, 5, 7, 8) and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and id in (1, 3, 5, 7, 8) and ({filter()}) order by id offset 0 limit 7'), ('%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_connections_by_last_name():
@@ -301,9 +249,7 @@ def test_search_connections_by_last_name():
         res = client.get(f'{PROFILES_URL}/connections?search=LAST_NAME', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and id in (1, 3, 5, 7, 8) and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and id in (1, 3, 5, 7, 8) and ({filter()}) order by id offset 0 limit 7'), ('%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_connections_by_email():
@@ -311,9 +257,7 @@ def test_search_connections_by_email():
         res = client.get(f'{PROFILES_URL}/connections?search=EMAIL', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and id in (1, 3, 5, 7, 8) and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%email%', '%email%', '%email%', '%email%', '%email%', '%email%', '%email%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and id in (1, 3, 5, 7, 8) and ({filter()}) order by id offset 0 limit 7'), ('%email%', '%email%', '%email%', '%email%', '%email%', '%email%', '%email%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_connections_by_phone_number():
@@ -321,9 +265,7 @@ def test_search_connections_by_phone_number():
         res = client.get(f'{PROFILES_URL}/connections?search=PHONE_NUMBER', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and id in (1, 3, 5, 7, 8) and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and id in (1, 3, 5, 7, 8) and ({filter()}) order by id offset 0 limit 7'), ('%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_connections_by_sex():
@@ -331,9 +273,7 @@ def test_search_connections_by_sex():
         res = client.get(f'{PROFILES_URL}/connections?search=SEX', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and id in (1, 3, 5, 7, 8) and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%sex%', '%sex%', '%sex%', '%sex%', '%sex%', '%sex%', '%sex%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and id in (1, 3, 5, 7, 8) and ({filter()}) order by id offset 0 limit 7'), ('%sex%', '%sex%', '%sex%', '%sex%', '%sex%', '%sex%', '%sex%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_connections_by_username():
@@ -341,9 +281,7 @@ def test_search_connections_by_username():
         res = client.get(f'{PROFILES_URL}/connections?search=USERNAME', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and id in (1, 3, 5, 7, 8) and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%username%', '%username%', '%username%', '%username%', '%username%', '%username%', '%username%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and id in (1, 3, 5, 7, 8) and ({filter()}) order by id offset 0 limit 7'), ('%username%', '%username%', '%username%', '%username%', '%username%', '%username%', '%username%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_connections_by_biography():
@@ -351,9 +289,7 @@ def test_search_connections_by_biography():
         res = client.get(f'{PROFILES_URL}/connections?search=BIOGRAPHY', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and id in (1, 3, 5, 7, 8) and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%biography%', '%biography%', '%biography%', '%biography%', '%biography%', '%biography%', '%biography%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and id in (1, 3, 5, 7, 8) and ({filter()}) order by id offset 0 limit 7'), ('%biography%', '%biography%', '%biography%', '%biography%', '%biography%', '%biography%', '%biography%'))
 
 @patch('profile_service.main.db', testDB)
 def test_read_connection_requests():
@@ -361,9 +297,7 @@ def test_read_connection_requests():
         res = client.get(f'{PROFILES_URL}/connection_requests', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and id in (2, 4, 6) and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and id in (2, 4, 6) and ({filter()}) order by id offset 0 limit 7'), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
 
 @patch('profile_service.main.db', testDB)
 def test_read_connection_requests_with_offset():
@@ -371,9 +305,7 @@ def test_read_connection_requests_with_offset():
         res = client.get(f'{PROFILES_URL}/connection_requests?offset=7', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and id in (2, 4, 6) and ({filter()}) order by id offset 7 limit 7                        
-        '''.split()), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and id in (2, 4, 6) and ({filter()}) order by id offset 7 limit 7'), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
 
 @patch('profile_service.main.db', testDB)
 def test_read_connection_requests_with_limit():
@@ -381,9 +313,7 @@ def test_read_connection_requests_with_limit():
         res = client.get(f'{PROFILES_URL}/connection_requests?limit=10', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and id in (2, 4, 6) and ({filter()}) order by id offset 0 limit 10                        
-        '''.split()), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and id in (2, 4, 6) and ({filter()}) order by id offset 0 limit 10'), ('%%', '%%', '%%', '%%', '%%', '%%', '%%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_connection_requests_by_first_name():
@@ -391,9 +321,7 @@ def test_search_connection_requests_by_first_name():
         res = client.get(f'{PROFILES_URL}/connection_requests?search=FIRST_NAME', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and id in (2, 4, 6) and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and id in (2, 4, 6) and ({filter()}) order by id offset 0 limit 7'), ('%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%', '%first_name%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_connection_requests_by_last_name():
@@ -401,9 +329,7 @@ def test_search_connection_requests_by_last_name():
         res = client.get(f'{PROFILES_URL}/connection_requests?search=LAST_NAME', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and id in (2, 4, 6) and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and id in (2, 4, 6) and ({filter()}) order by id offset 0 limit 7'), ('%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%', '%last_name%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_connection_requests_by_email():
@@ -411,9 +337,7 @@ def test_search_connection_requests_by_email():
         res = client.get(f'{PROFILES_URL}/connection_requests?search=EMAIL', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and id in (2, 4, 6) and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%email%', '%email%', '%email%', '%email%', '%email%', '%email%', '%email%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and id in (2, 4, 6) and ({filter()}) order by id offset 0 limit 7'), ('%email%', '%email%', '%email%', '%email%', '%email%', '%email%', '%email%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_connection_requests_by_phone_number():
@@ -421,9 +345,7 @@ def test_search_connection_requests_by_phone_number():
         res = client.get(f'{PROFILES_URL}/connection_requests?search=PHONE_NUMBER', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and id in (2, 4, 6) and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and id in (2, 4, 6) and ({filter()}) order by id offset 0 limit 7'), ('%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%', '%phone_number%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_connection_requests_by_sex():
@@ -431,9 +353,7 @@ def test_search_connection_requests_by_sex():
         res = client.get(f'{PROFILES_URL}/connection_requests?search=SEX', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and id in (2, 4, 6) and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%sex%', '%sex%', '%sex%', '%sex%', '%sex%', '%sex%', '%sex%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and id in (2, 4, 6) and ({filter()}) order by id offset 0 limit 7'), ('%sex%', '%sex%', '%sex%', '%sex%', '%sex%', '%sex%', '%sex%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_connection_requests_by_username():
@@ -441,9 +361,7 @@ def test_search_connection_requests_by_username():
         res = client.get(f'{PROFILES_URL}/connection_requests?search=USERNAME', headers=generate_auth())
         assert res.status_code == 200        
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and id in (2, 4, 6) and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%username%', '%username%', '%username%', '%username%', '%username%', '%username%', '%username%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and id in (2, 4, 6) and ({filter()}) order by id offset 0 limit 7'), ('%username%', '%username%', '%username%', '%username%', '%username%', '%username%', '%username%'))
 
 @patch('profile_service.main.db', testDB)
 def test_search_connection_requests_by_biography():
@@ -451,9 +369,7 @@ def test_search_connection_requests_by_biography():
         res = client.get(f'{PROFILES_URL}/connection_requests?search=BIOGRAPHY', headers=generate_auth())
         assert res.status_code == 200
         db_spy.assert_called()
-        db_spy.assert_called_with(' '.join(f'''
-            select * from profiles where id!=0 and id in (2, 4, 6) and ({filter()}) order by id offset 0 limit 7                        
-        '''.split()), ('%biography%', '%biography%', '%biography%', '%biography%', '%biography%', '%biography%', '%biography%'))
+        db_spy.assert_called_with(fix_whitespaces(f'select * from profiles where id!=0 and id in (2, 4, 6) and ({filter()}) order by id offset 0 limit 7'), ('%biography%', '%biography%', '%biography%', '%biography%', '%biography%', '%biography%', '%biography%'))
 
 @patch('profile_service.main.db', testDB)
 def test_read_profile():
@@ -1128,7 +1044,7 @@ def test_update_profile_valid():
         body = json.loads(res.text)
         assert body is None
         db_spy.assert_called()
-        db_spy.assert_any_call(' '.join('''
+        db_spy.assert_any_call(fix_whitespaces('''
             update profiles 
             set first_name=%s, 
             last_name=%s, 
@@ -1146,4 +1062,4 @@ def test_update_profile_valid():
             block_post_notifications=%s,
             block_message_notifications=%s
             where id=0
-        '''.split()), ('qwe', 'qwe', 'qwe', 'qwe', 'qwe', date(2012, 12, 12), 'qwe', 'qwe', False, '[]', '[]', '[]', '[{"name": "interest 1"}]', False, False))
+        '''), ('qwe', 'qwe', 'qwe', 'qwe', 'qwe', date(2012, 12, 12), 'qwe', 'qwe', False, '[]', '[]', '[]', '[{"name": "interest 1"}]', False, False))
