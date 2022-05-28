@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v1.5.0 (2022-05-28)
+### Feature
+* Events, tracing and logging feature ([#4](https://github.com/draganagrbic998/devops_profile_service/issues/4)) ([`9156cc3`](https://github.com/draganagrbic998/devops_profile_service/commit/9156cc3bc2b60d1f8c4fde2ae016e38189a468d8))
+
 ## v1.4.0 (2022-05-21)
 ### Feature
 * Connect/block profile + notifications feature ([#3](https://github.com/draganagrbic998/devops_profile_service3/issues/3)) ([`4241d96`](https://github.com/draganagrbic998/devops_profile_service3/commit/4241d963c90dfb44026c5602103817ef8f044ac9))
