@@ -7,6 +7,9 @@ from pydantic import BaseModel, Field
 from typing import Optional, List
 from jaeger_client import Config
 from opentracing.scope_managers.asyncio import AsyncioScopeManager
+from prometheus_client import Counter
+from prometheus_fastapi_instrumentator import Instrumentator, metrics
+from prometheus_fastapi_instrumentator.metrics import Info
 
 import uvicorn
 import datetime
@@ -49,6 +52,43 @@ def setup_opentracing(app):
     app.tracer = app.state.tracer
 
 setup_opentracing(app)
+
+def http_404_requests():
+    METRIC = Counter(
+        "http_404_requests",
+        "Number of times a 404 request has occured.",
+        labelnames=("path",)
+    )
+
+    def instrumentation(info: Info):
+        if info.response.status_code == 404:
+            METRIC.labels(info.request.url).inc()
+
+    return instrumentation
+
+def http_unique_users():
+    METRIC = Counter(
+        "http_unique_users",
+        "Number of unique http users.",
+        labelnames=("user",)
+    )
+
+    def instrumentation(info: Info):
+        try:
+            user = f'{info.request.client.host} {info.request.headers["User-Agent"]}'
+        except:
+            user = f'{info.request.client.host} Unknown'
+        METRIC.labels(user).inc()
+
+    return instrumentation
+
+
+instrumentator = Instrumentator(excluded_handlers=["/metrics"])
+instrumentator.add(metrics.default())
+instrumentator.add(metrics.combined_size())
+instrumentator.add(http_404_requests())
+instrumentator.add(http_unique_users())
+instrumentator.instrument(app).expose(app)
 
 PROFILES_URL = '/api/profiles'
 PROFILE_URL = '/api/profile'
