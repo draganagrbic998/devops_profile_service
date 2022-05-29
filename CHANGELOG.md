@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v1.6.0 (2022-05-29)
+### Feature
+* Monitoring feature ([#5](https://github.com/draganagrbic998/devops_profile_service/issues/5)) ([`7dc2891`](https://github.com/draganagrbic998/devops_profile_service/commit/7dc28914fc52a0073b579e48c20059091beee32b))
+
 ## v1.5.0 (2022-05-28)
 ### Feature
 * Events, tracing and logging feature ([#4](https://github.com/draganagrbic998/devops_profile_service/issues/4)) ([`9156cc3`](https://github.com/draganagrbic998/devops_profile_service/commit/9156cc3bc2b60d1f8c4fde2ae016e38189a468d8))
