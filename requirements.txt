@@ -11,3 +11,4 @@ passlib
 bcrypt
 jaeger_client
 opentracing
+prometheus_fastapi_instrumentator
