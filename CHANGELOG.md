@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v1.7.0 (2022-05-30)
+### Feature
+* Profile update sync feature ([#7](https://github.com/draganagrbic998/devops_profile_service/issues/7)) ([`defcbe2`](https://github.com/draganagrbic998/devops_profile_service/commit/defcbe2456ee26d577deb83474f904241813d1fd))
+
 ## v1.6.1 (2022-05-30)
 ### Fix
 * Fix env variables ([#6](https://github.com/draganagrbic998/devops_profile_service/issues/6)) ([`c076354`](https://github.com/draganagrbic998/devops_profile_service/commit/c076354cd668b5ebe3dcbbec2daaf90bfb517f53))
