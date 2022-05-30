@@ -17,10 +17,25 @@ import time
 import json
 import jwt
 import threading
+import os
 
+DB_USERNAME = os.getenv('DB_USERNAME', 'postgres')
+DB_PASSWORD = os.getenv('DB_PASSWORD', 'postgres')
+DB_HOST = os.getenv('DB_HOST', 'profile_service_db')
+DB_PORT = os.getenv('DB_PORT', '5432')
+DB_NAME = os.getenv('DB_NAME', 'postgres')
+KAFKA_HOST = os.getenv('KAFKA_HOST', 'kafka')
+KAFKA_PORT = os.getenv('KAFKA_PORT', '9092')
+KAFKA_NOTIFICATIONS_TOPIC = os.getenv('KAFKA_NOTIFICATIONS_TOPIC', 'notifications')
+KAFKA_PROFILES_TOPIC = os.getenv('KAFKA_PROFILES_TOPIC', 'profiles')
+JWT_SECRET = os.getenv('JWT_SECRET', 'jwt_secret')
+JWT_ALGORITHM = os.getenv('JWT_ALGORITHM', 'HS256')
+PROFILES_URL = '/api/profiles'
+PROFILE_URL = '/api/profile'
+NOTIFICATIONS_URL = '/api/notifications'
 
 app = FastAPI(title='Profile Service API')
-db = create_engine('postgresql://postgres:postgres@profile_service_db:5432/postgres')
+db = create_engine(f'postgresql://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}')
 
 app.add_middleware(
     CORSMiddleware,
@@ -89,12 +104,6 @@ instrumentator.add(metrics.combined_size())
 instrumentator.add(http_404_requests())
 instrumentator.add(http_unique_users())
 instrumentator.instrument(app).expose(app)
-
-PROFILES_URL = '/api/profiles'
-PROFILE_URL = '/api/profile'
-NOTIFICATIONS_URL = '/api/notifications'
-JWT_SECRET = 'auth_service_secret'
-JWT_ALGORITHM = 'HS256'
 
 class Profile(BaseModel):
     id: Optional[int] = Field(description='Profile ID')

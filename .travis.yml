@@ -51,7 +51,7 @@ jobs:
     - stage: artifact_deploy
       install: skip
       before_script:
-        - pip install python-semantic-release
+        - pip install python-semantic-release==7.28.1
       script:
         - if [[ $TRAVIS_BRANCH == "master" ]]; then semantic-release publish; fi
         - if [[ $TRAVIS_BRANCH == "develop" ]]; then semantic-release publish -D branch=develop; fi
@@ -60,7 +60,7 @@ jobs:
       install: skip
       before_script:
         - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-        - pip install python-semantic-release
+        - pip install python-semantic-release==7.28.1
         - version=$(semantic-release print-version)
       script:
         - if [[ $version != "" ]]; then docker build -t draganagrbic/devops_profile_service_project_2022:latest .; fi
