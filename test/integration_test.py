@@ -1,6 +1,6 @@
 from profile_service.main import JWT_SECRET, JWT_ALGORITHM
 from sqlalchemy import create_engine
-from kafka import KafkaProducer
+from kafka import KafkaProducer, KafkaConsumer
 
 import pytest
 import requests
@@ -1265,6 +1265,7 @@ def test_update_profile_empty_interests():
 def test_update_profile_valid():
     reset_table()
     reset_user()
+    kafka_consumer = KafkaConsumer('auth', bootstrap_servers=['localhost:29092'])
     data = {
         'first_name': 'qwe',
         'last_name': 'qwe',
@@ -1282,7 +1283,14 @@ def test_update_profile_valid():
     res = requests.put(PROFILE_URL, json=data, headers=generate_auth())
     assert res.status_code == 200
     body = json.loads(res.text)
-    assert body is None
+    assert body == {
+        'role': 'user',
+        'token': jwt.encode({
+            'id': 0,
+            'username': 'qwe',
+            'userFullName': 'qwe qwe'
+        }, JWT_SECRET, algorithm=JWT_ALGORITHM)
+    }
 
     user = list(db.execute('select * from profiles where id=0'))[0]    
     assert user['id'] == 0
@@ -1303,6 +1311,7 @@ def test_update_profile_valid():
     assert user['blocked_profiles'] == [9, 10]
     assert not user['block_post_notifications']
     assert not user['block_message_notifications']
+    assert kafka_consumer.poll(update_offsets=False) is not None
 
 def test_connect_blocked():
     reset_table(10)

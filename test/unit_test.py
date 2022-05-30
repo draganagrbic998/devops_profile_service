@@ -29,8 +29,13 @@ class TestDB:
             'block_message_notifications': False
         }]
 
+class TestKP:
+    def send(self, topic, data):
+        pass
+
 client = TestClient(app)
 testDB = TestDB()
+testKP = TestKP()
 
 def fix_whitespaces(text: str):
     return ' '.join(text.split())
@@ -1023,43 +1028,60 @@ def test_update_profile_empty_interests():
     assert body['detail'][0]['type'] == 'type_error.list'
 
 @patch('profile_service.main.db', testDB)
+@patch('profile_service.main.kafka_producer', testKP)
 def test_update_profile_valid():
-    with patch.object(testDB, 'execute', wraps=testDB.execute) as db_spy:        
-        data = {
-            'first_name': 'qwe',
-            'last_name': 'qwe',
-            'email': 'qwe',
-            'phone_number': 'qwe',
-            'sex': 'qwe',
-            'birth_date': '2012-12-12',
-            'username': 'qwe',
-            'biography': 'qwe',
-            'private': False,
-            'educations': None,
-            'skills': [],
-            'interests': [{'name': 'interest 1'}]
-        }
-        res = client.put(PROFILE_URL, json=data, headers=generate_auth())
-        assert res.status_code == 200
-        body = json.loads(res.text)
-        assert body is None
-        db_spy.assert_called()
-        db_spy.assert_any_call(fix_whitespaces('''
-            update profiles 
-            set first_name=%s, 
-            last_name=%s, 
-            email=%s, 
-            phone_number=%s, 
-            sex=%s, 
-            birth_date=%s, 
-            username=%s, 
-            biography=%s, 
-            private=%s, 
-            work_experiences=%s, 
-            educations=%s, 
-            skills=%s, 
-            interests=%s,
-            block_post_notifications=%s,
-            block_message_notifications=%s
-            where id=0
-        '''), ('qwe', 'qwe', 'qwe', 'qwe', 'qwe', date(2012, 12, 12), 'qwe', 'qwe', False, '[]', '[]', '[]', '[{"name": "interest 1"}]', False, False))
+    with patch.object(testDB, 'execute', wraps=testDB.execute) as db_spy:      
+        with patch.object(testKP, 'send', wraps=testKP.send) as kafka_spy:  
+            data = {
+                'first_name': 'qwe',
+                'last_name': 'qwe',
+                'email': 'qwe',
+                'phone_number': 'qwe',
+                'sex': 'qwe',
+                'birth_date': '2012-12-12',
+                'username': 'qwe',
+                'biography': 'qwe',
+                'private': False,
+                'educations': None,
+                'skills': [],
+                'interests': [{'name': 'interest 1'}]
+            }
+            res = client.put(PROFILE_URL, json=data, headers=generate_auth())
+            assert res.status_code == 200
+            body = json.loads(res.text)
+            assert body == {
+                'role': 'user',
+                'token': jwt.encode({
+                    'id': 0,
+                    'username': 'asd',
+                    'userFullName': 'asd asd'
+                }, JWT_SECRET, algorithm=JWT_ALGORITHM)
+            }
+
+            db_spy.assert_called()
+            db_spy.assert_any_call(fix_whitespaces('''
+                update profiles 
+                set first_name=%s, 
+                last_name=%s, 
+                email=%s, 
+                phone_number=%s, 
+                sex=%s, 
+                birth_date=%s, 
+                username=%s, 
+                biography=%s, 
+                private=%s, 
+                work_experiences=%s, 
+                educations=%s, 
+                skills=%s, 
+                interests=%s,
+                block_post_notifications=%s,
+                block_message_notifications=%s
+                where id=0
+            '''), ('qwe', 'qwe', 'qwe', 'qwe', 'qwe', date(2012, 12, 12), 'qwe', 'qwe', False, '[]', '[]', '[]', '[{"name": "interest 1"}]', False, False))
+            kafka_spy.assert_called()
+            kafka_spy.assert_called_with('auth', {
+                'id': 0,
+                'username': 'qwe',
+                'first_name': 'qwe',
+                'last_name': 'qwe'
+            })
