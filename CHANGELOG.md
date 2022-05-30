@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v1.6.1 (2022-05-30)
+### Fix
+* Fix env variables ([#6](https://github.com/draganagrbic998/devops_profile_service/issues/6)) ([`c076354`](https://github.com/draganagrbic998/devops_profile_service/commit/c076354cd668b5ebe3dcbbec2daaf90bfb517f53))
+
 ## v1.6.0 (2022-05-29)
 ### Feature
 * Monitoring feature ([#5](https://github.com/draganagrbic998/devops_profile_service/issues/5)) ([`7dc2891`](https://github.com/draganagrbic998/devops_profile_service/commit/7dc28914fc52a0073b579e48c20059091beee32b))
