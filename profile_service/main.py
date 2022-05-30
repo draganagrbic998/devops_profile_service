@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi_contrib.conf import settings
 from sqlalchemy import create_engine
-from kafka import KafkaConsumer
+from kafka import KafkaProducer, KafkaConsumer
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from jaeger_client import Config
@@ -28,6 +28,7 @@ KAFKA_HOST = os.getenv('KAFKA_HOST', 'kafka')
 KAFKA_PORT = os.getenv('KAFKA_PORT', '9092')
 KAFKA_NOTIFICATIONS_TOPIC = os.getenv('KAFKA_NOTIFICATIONS_TOPIC', 'notifications')
 KAFKA_PROFILES_TOPIC = os.getenv('KAFKA_PROFILES_TOPIC', 'profiles')
+KAFKA_AUTH_TOPIC = os.getenv('KAFKA_AUTH_TOPIC', 'auth')
 JWT_SECRET = os.getenv('JWT_SECRET', 'jwt_secret')
 JWT_ALGORITHM = os.getenv('JWT_ALGORITHM', 'HS256')
 PROFILES_URL = '/api/profiles'
@@ -36,6 +37,7 @@ NOTIFICATIONS_URL = '/api/notifications'
 
 app = FastAPI(title='Profile Service API')
 db = create_engine(f'postgresql://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}')
+kafka_producer = None
 
 app.add_middleware(
     CORSMiddleware,
@@ -230,6 +232,10 @@ def read_connections(request: Request, search: str = Query(''), offset: int = Qu
 def read_connection_requests(request: Request, search: str = Query(''), offset: int = Query(0), limit: int = Query(7)):
     return search_profiles(request, search, offset, limit, '/connection_requests')
 
+@app.get(PROFILE_URL + '/{profile_id}')
+def read_one_profile(profile_id: int):
+    return Profile.parse_obj(list(db.execute(f'select * from profiles where id={profile_id}'))[0])
+
 @app.get(PROFILE_URL)
 def read_profile(request: Request):
     with app.tracer.start_span('Read Profile Request') as span:
@@ -248,8 +254,8 @@ def update_profile(request: Request, profile: Profile):
     with app.tracer.start_span('Update Profile Request') as span:
         try:
             span.set_tag('http_method', 'PUT')
+            
             current_user = get_current_user(request)
-
             db.execute(' '.join(f'''
                 update profiles 
                 set first_name=%s, 
@@ -273,8 +279,21 @@ def update_profile(request: Request, profile: Profile):
                     str(profile.work_experiences or []).replace("'", '"'), str(profile.educations or []).replace("'", '"'), 
                     str(profile.skills or []).replace("'", '"'), str(profile.interests or []).replace("'", '"'),
                     profile.block_post_notifications or False, profile.block_message_notifications or False))
-        
+            kafka_producer.send(KAFKA_AUTH_TOPIC, {
+                'id': current_user.id,
+                'username': profile.username,
+                'first_name': profile.first_name,
+                'last_name': profile.last_name
+            })
+            
+            current_user = get_user(current_user.id)
+            token = jwt.encode({
+                'id': current_user.id,
+                'username': current_user.username,
+                'userFullName': f'{current_user.first_name} {current_user.last_name}'
+            }, JWT_SECRET, algorithm=JWT_ALGORITHM)
             record_action(200, 'Request successful', span)
+            return {'token': token, 'role': 'admin' if current_user.username == 'admin' else 'user'}
         except Exception as e:
             record_action(500, 'Request failed', span)
             raise e
@@ -440,6 +459,14 @@ def read_notifications(request: Request, search: str = Query(''), offset: int = 
             record_action(500, 'Request failed', span)
             raise e            
 
+def register_kafka_producer():
+    global kafka_producer
+    while True:
+        try:
+            kafka_producer = KafkaProducer(bootstrap_servers=f'{KAFKA_HOST}:{KAFKA_PORT}', value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+            break
+        except:
+            time.sleep(3)
 
 def register_profiles_consumer():
     def poll():
@@ -492,6 +519,7 @@ def register_notifications_consumer():
 
 
 def run_service():
+    register_kafka_producer()
     register_profiles_consumer()
     register_notifications_consumer()
     uvicorn.run(app, host='0.0.0.0', port=8001)
