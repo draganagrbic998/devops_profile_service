@@ -2,6 +2,10 @@
 
 <!--next-version-placeholder-->
 
+## v1.7.1 (2022-06-02)
+### Fix
+* Remove unused cors config ([#8](https://github.com/draganagrbic998/devops_profile_service/issues/8)) ([`a03265a`](https://github.com/draganagrbic998/devops_profile_service/commit/a03265a5cb7d53d79aef62a5a9be86f27ba2faa7))
+
 ## v1.7.0 (2022-05-30)
 ### Feature
 * Profile update sync feature ([#7](https://github.com/draganagrbic998/devops_profile_service/issues/7)) ([`defcbe2`](https://github.com/draganagrbic998/devops_profile_service/commit/defcbe2456ee26d577deb83474f904241813d1fd))
